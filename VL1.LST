@@ -1,0 +1,435 @@
+Turbo Assembler	 Version 2.02	     26/12/19 13:24:06	    Page 1
+vl1.ASM
+
+
+
+      1	    0000			 model small
+      2	    0000			 .stack	100h
+      3					 .386
+      4	    0000			 .data
+      5	    0000  0A 0D	49 6E 70 75 74+		 messageInL db 10,13,"Input first number: $"
+      6		  20 66	69 72 73 74 20+
+      7		  6E 75	6D 62 65 72 3A+
+      8		  20 24
+      9	    0017  0A 0D	49 6E 70 75 74+		 messageInR db 10,13,"Input second number $"
+     10		  20 73	65 63 6F 6E 64+
+     11		  20 6E	75 6D 62 65 72+
+     12		  20 24
+     13	    002E  0A 0D	4E 75 6D 62 65+		 messageSideEquals db 10,13,"Numbers are equals	$"
+     14		  72 73	20 61 72 65 20+
+     15		  65 71	75 61 6C 73 20+
+     16		  24
+     17	    0044  0A 0D	46 69 72 73 74+		 messageLeftBigger db 10,13,"First number must be smaller than second number $"
+     18		  20 6E	75 6D 62 65 72+
+     19		  20 6D	75 73 74 20 62+
+     20		  65 20	73 6D 61 6C 6C+
+     21		  65 72	20 74 68 61 6E+
+     22		  20 73	65 63 6F 6E 64+
+     23		  20 6E	75 6D 62 65 72+
+     24		  20 24
+     25	    0077  0A 0D	49 6E 76 61 6C+		 InvalidData db	10,13,"Invalid data  $"
+     26		  69 64	20 64 61 74 61+
+     27		  20 20	24
+     28	    0088  0000000000000000		 leftX dq 0
+     29	    0090  0000000000000000		 rightX	dq 0
+     30	    0098  12				 buf db	18
+     31	    0099  12*(00)			 db 18 dup(0)
+     32	    00AB  0000000A			 ten dd	10
+     33	    00AF  0000				 c dw 0
+     34	    00B1  00000001			 one dd	1
+     35	    00B5  0280*		      +		 masX dq 640 dup(0)
+     36		  (0000000000000000)
+     37	    14B5  0280*		      +		 masY dq 640 dup(0)
+     38		  (0000000000000000)
+     39	    28B5  0000000000000000		 maxY dq 0
+     40	    28BD  0000000000000000		 minY dq 0
+     41	    28C5  0000000000000000		 koefX dq 0
+     42	    28CD  0000000000000000		 koefY dq 0
+     43	    28D5  0000000000000000		 koef dq 0
+     44	    28DD  0000000000000000		 temp dq 0
+     45	    28E5  ??				 saveMode db ?
+     46	    28E6  00000002			 two dd	2
+     47	    28EA  00000000			 zero dd 0
+     48	    28EE  00000004			 four dd 4
+     49	    28F2  0000				 temp2 dw 0
+     50	    28F4  0280*(0000)			 koordY	dw 640 dup(0)
+     51	    2DF4  0000				 err1 dw 0
+     52	    2DF6  00				 flag db 0
+     53	    2DF7  0000027F			 wid dd	639
+     54	    2DFB  000001DF			 hei dd	479
+     55	    2DFF			 .code
+     56	    0000				 inputConvert PROC
+     57	    0000  60					 pusha
+Turbo Assembler	 Version 2.02	     26/12/19 13:24:06	    Page 2
+vl1.ASM
+
+
+
+     58	    0001  C6 06	2DF6r 00			 mov flag,0
+     59	    0006					 vvod:
+     60	    0006  B4 0A						 mov ah, 0Ah
+     61	    0008  BA 0098r					 mov dx,offset buf
+     62	    000B  CD 21						 int 21h
+     63	    000D  D9 EE						 fldz
+     64	    000F  BE 0002					 mov si, 2
+     65	    0012  80 BC	0098r 0D				 cmp buf[si],0dh
+     66	    0017  74 63	90 90					 je @err1
+     67	    001B  80 BC	0098r 2D				 cmp buf[si],'-'
+     68	    0020  74 0B	90 90					 je M1
+     69	    0024  80 BC	0098r 2B				 cmp buf[si],'+'
+     70	    0029  75 15	90 90					 jne M2
+     71	    002D  46						 M1: inc si
+     72	    002E  80 BC	0098r 2E					 cmp buf[si],'.'
+     73	    0033  74 47	90 90						 je @err1
+     74	    0037  80 BC	0098r 0D				 cmp buf[si],0dh
+     75	    003C  74 3E	90 90					 je @err1
+     76	    0040  80 BC	0098r 2E				 M2: cmp buf[si],'.'
+     77	    0045  74 3D	90 90					 je procDrob
+     78	    0049  80 BC	0098r 0D				 cmp buf[si],0dh
+     79	    004E  74 7E	90 90					 je endEnter
+     80	    0052  80 BC	0098r 30				 cmp buf[si],'0'
+     81	    0057  72 23	90 90					 jb @err1
+     82	    005B  80 BC	0098r 39				 cmp buf[si],'9'
+     83	    0060  77 1A	90 90					 ja @err1
+     84	    0064  8A 84	0098r					 mov al,buf[si]
+     85	    0068  2C 30						 sub al,'0'
+     86	    006A  32 E4						 xor ah,ah
+     87	    006C  A3 00AFr					 mov c,ax
+     88	    006F  DA 0E	00ABr					 fimul ten
+     89	    0073  DF 06	00AFr					 fild c
+     90	    0077  DE C1						 fadd
+     91	    0079  46						 inc si
+     92	    007A  EB C4						 jmp M2
+     93	    007C  80 06	2DF6r 01				 @err1:	add flag,1
+     94	    0081  EB 56	90						 jmp EndProc
+     95	    0084						 procDrob:
+     96	    0084  89 36	2DF4r						 mov err1,si
+     97	    0088  D9 EE							 fldz
+     98	    008A  33 DB							 xor bx,bx
+     99	    008C  8A 1E	0099r						 mov bl,buf[1]
+    100	    0090  8B F3							 mov si,bx
+    101	    0092  46							 inc si
+    102	    0093  80 BC	0098r 2E					 cmp buf[si],'.'
+    103	    0098  74 E2							 je @err1
+    104	    009A						 L1:
+    105	    009A  8A 84	0098r						 mov al,buf[si]
+    106	    009E  3C 2E							 cmp al,'.'
+    107	    00A0  74 24	90 90						 je  endDrob
+    108	    00A4  80 BC	0098r 30					 cmp buf[si],'0'
+    109	    00A9  72 D1							 jb @err1
+    110	    00AB  80 BC	0098r 39					 cmp buf[si],'9'
+    111	    00B0  77 CA							 ja @err1
+    112	    00B2  2C 30							 sub al,'0'
+    113	    00B4  32 E4							 xor ah,ah
+    114	    00B6  A3 00AFr						 mov c,ax
+Turbo Assembler	 Version 2.02	     26/12/19 13:24:06	    Page 3
+vl1.ASM
+
+
+
+    115	    00B9  DF 06	00AFr						 fild c
+    116	    00BD  DE C1							 fadd
+    117	    00BF  DA 36	00ABr						 fidiv ten
+    118	    00C3  4E							 dec si
+    119	    00C4  EB D4							 jmp L1
+    120	    00C6  3B 36	2DF4r					 endDrob: cmp si, err1
+    121	    00CA  75 B0							 jne @err1
+    122	    00CC  DE C1							 fadd
+    123	    00CE						 endEnter:
+    124	    00CE  80 3E	009Ar 2D				 cmp buf[2],'-'
+    125	    00D3  75 04	90 90					 jne EndProc
+    126	    00D7  D9 E0						 fchs
+    127
+    128	    00D9  61					 EndProc: popa
+    129	    00DA  C3					 ret
+    130	    00DB				 inputConvert endp
+    131
+    132	    00DB				 count PROC
+    133	    00DB  B9 0280				 mov cx,640
+    134	    00DE  BE 0000				 mov si,0
+    135	    00E1					 counting:
+    136	    00E1  DD 84	00B5r					 fld masX[si]
+    137	    00E5  D9 FE						 fsin
+    138	    00E7  DD 16	28DDr					 fst temp
+    139	    00EB  DC 0E	28DDr					 fmul temp
+    140	    00EF  DD 84	00B5r					 fld masX[si]
+    141
+    142	    00F3  DD 84	00B5r					 fld masX[si]
+    143	    00F7  D9 FF						 fcos
+    144	    00F9  DE C9						 fmul
+    145	    00FB  DE C1						 fadd
+    146	    00FD  DD 84	00B5r					 fld masX[si]
+    147	    0101  DE C9						 fmul
+    148
+    149	    0103  DD 9C	14B5r					 fstp masY[si]
+    150	    0107  83 C6	08					 add si,8
+    151	    010A  E2 D5					 loop counting
+    152	    010C  C3				 ret
+    153	    010D				 count endp
+    154
+    155	    010D				 scalingX PROC
+    156	    010D  DD 06	0090r				 fld rightX
+    157	    0111  DC 26	0088r				 fsub leftX
+    158	    0115  DA 36	2DF7r				 fidiv wid
+    159	    0119  DD 1E	28DDr				 fstp temp
+    160	    011D  B9 0280				 mov cx,640
+    161	    0120  BE 0000				 mov si,0
+    162	    0123  DD 06	0088r				 fld leftX
+    163	    0127					 cycle:
+    164	    0127  DD 94	00B5r					 fst masX[si]
+    165	    012B  DD 06	28DDr					 fld temp
+    166	    012F  DE C1						 fadd
+    167	    0131  83 C6	08					 add si,8
+    168	    0134  E2 F1					 loop cycle
+    169	    0136  C3				 ret
+    170	    0137				 scalingX endp
+    171
+Turbo Assembler	 Version 2.02	     26/12/19 13:24:06	    Page 4
+vl1.ASM
+
+
+
+    172	    0137				 @scal PROC
+    173	    0137  DD 06	14B5r				 fld masY[0]
+    174	    013B  DD 16	28B5r				 fst maxY
+    175	    013F  DD 16	28BDr				 fst minY
+    176	    0143  DD 1E	14B5r				 fstp masY[0]
+    177	    0147  B9 0280				 mov cx,640
+    178	    014A  BE 0000				 mov si,0
+    179	    014D					 findMaxMin:
+    180	    014D  DD 84	14B5r					 fld masY[si]
+    181	    0151  DC 16	28B5r					 fcom maxY
+    182	    0155  9B DF	E0					 fstsw ax
+    183	    0158  9E						 sahf
+    184	    0159  77 15	90 90					 ja bigger1
+    185
+    186	    015D  DC 16	28BDr					 fcom  minY
+    187	    0161  9B DF	E0					 fstsw ax
+    188	    0164  9E						 sahf
+    189	    0165  72 10	90 90					 jb smaller
+    190	    0169  DD 9C	14B5r					 fstp masY[si]
+    191	    016D  EB 0F	90					 jmp step
+    192	    0170					 bigger1:
+    193	    0170  DD 1E	28B5r					 fstp maxY
+    194	    0174  EB 08	90					 jmp step
+    195	    0177					 smaller:
+    196	    0177  DD 1E	28BDr					 fstp minY
+    197	    017B  EB 01	90					 jmp step
+    198	    017E					 step:
+    199	    017E  83 C6	08					 add si,8
+    200
+    201	    0181  E2 CA					 loop findMaxMin
+    202
+    203	    0183  DD 06	28B5r				 fld maxY
+    204	    0187  DC 26	28BDr				 fsub minY
+    205	    018B  DD 1E	28D5r				 fstp koef
+    206	    018F  DB 06	2DFBr				 fild hei
+    207	    0193  DC 36	28D5r				 fdiv koef
+    208	    0197  DD 1E	28CDr				 fstp koefY
+    209	    019B  BE 0000				 mov si,0
+    210	    019E  B9 0280				 mov cx, 640
+    211	    01A1  BF 0000				 mov di, 0
+    212	    01A4						 go:
+    213	    01A4  DD 06	28B5r						 fld maxY
+    214	    01A8  DC A4	14B5r						 fsub  masY[si]
+    215	    01AC  DC 0E	28CDr						 fmul koefY
+    216	    01B0  D9 FC							 frndint
+    217	    01B2  DF 9D	28F4r						 fistp koordY[di]
+    218	    01B6  83 C7	02						 add di,2
+    219	    01B9  83 C6	08						 add si,8
+    220	    01BC  E2 E6						 loop go
+    221	    01BE  C3				 ret
+    222	    01BF				 @scal endp
+    223
+    224	    01BF				 drawing PROC
+    225	    01BF  B4 0F					 mov ah, 0Fh
+    226	    01C1  CD 10					 int 10h
+    227	    01C3  A2 28E5r				 mov saveMode, al
+    228	    01C6  B4 00					 mov ah,0
+Turbo Assembler	 Version 2.02	     26/12/19 13:24:06	    Page 5
+vl1.ASM
+
+
+
+    229	    01C8  B0 12					 mov al, 12h
+    230	    01CA  CD 10					 int 10h
+    231	    01CC  BE 0000				 mov si,0
+    232	    01CF  B9 0280				 mov cx,640
+    233	    01D2					 L:
+    234	    01D2  51						 push cx
+    235	    01D3  B4 0C						 mov ah, 0Ch
+    236	    01D5  B0 07						 mov al, 7
+    237	    01D7  32 FF						 xor bh,bh
+    238	    01D9  33 C9						 xor cx,cx
+    239	    01DB  8B 0E	28F2r					 mov cx, temp2
+    240	    01DF  33 D2						 xor dx,dx
+    241	    01E1  8B 94	28F4r					 mov dx, koordY[si]
+    242	    01E5  CD 10						 int 10h
+    243	    01E7  83 06	28F2r 01				 add temp2,1
+    244	    01EC  83 C6	02					 add si,2
+    245	    01EF  59						 pop cx
+    246	    01F0  E2 E0					 loop L
+    247	    01F2  B4 00				 mov ah,0
+    248	    01F4  CD 16				 int 16h
+    249
+    250	    01F6  B4 00				 mov ah,0
+    251	    01F8  A0 28E5r			 mov al, saveMode
+    252	    01FB  CD 10				 int 10h
+    253	    01FD  C3				 ret
+    254	    01FE				 drawing endp
+    255
+    256	    01FE			 MAIN:
+    257	    01FE  B8 0000s			 mov ax, @data
+    258	    0201  8E D8				 mov ds, ax
+    259
+    260	    0203				 @repeat:
+    261	    0203  9B DB	E3				 finit
+    262
+    263	    0206  B4 09					 mov ah, 09h
+    264	    0208  BA 0000r				 mov dx, offset	messageInL
+    265	    020B  CD 21					 int 21h
+    266
+    267	    020D  E8 FDF0				 Call inputConvert
+    268	    0210  DD 16	0088r				 fst leftX
+    269	    0214  80 3E	2DF6r 01			 cmp flag,1
+    270	    0219  74 3C	90 90				 je @wrong
+    271
+    272	    021D  B4 09					 mov ah, 09h
+    273	    021F  BA 0017r				 mov dx, offset	messageInR
+    274	    0222  CD 21					 int 21h
+    275
+    276	    0224  E8 FDD9				 Call inputConvert
+    277	    0227  DD 16	0090r				 fst rightX
+    278	    022B  80 3E	2DF6r 01			 cmp flag,1
+    279
+    280	    0230  74 25	90 90				 je @wrong
+    281	    0234  D8 D1					 fcom
+    282	    0236  9B DF	E0				 fstsw ax
+    283
+    284	    0239  9E					 sahf
+    285	    023A  74 09	90 90				 je @equal
+Turbo Assembler	 Version 2.02	     26/12/19 13:24:06	    Page 6
+vl1.ASM
+
+
+
+    286	    023E  72 0E	90 90				 jb @smaller
+    287	    0242  EB 1C	90				 jmp @allright
+    288	    0245				 @equal:
+    289	    0245  B4 09					 mov ah, 09h
+    290	    0247  BA 002Er				 mov dx, offset	messageSideEquals
+    291	    024A  CD 21					 int 21h
+    292	    024C  EB B5					 jmp @repeat
+    293
+    294	    024E				 @smaller:
+    295	    024E  B4 09					 mov ah, 09h
+    296	    0250  BA 0044r				 mov dx,offset messageLeftBigger
+    297	    0253  CD 21					 int 21h
+    298	    0255  EB AC					 jmp @repeat
+    299
+    300	    0257				 @wrong:
+    301	    0257  B4 09					 mov ah, 09h
+    302	    0259  BA 0077r				 mov dx,offset InvalidData
+    303	    025C  CD 21					 int 21h
+    304	    025E  EB A3					 jmp @repeat
+    305
+    306	    0260				 @allright:
+    307	    0260  E8 FEAA				 call scalingX
+    308	    0263  E8 FE75				 call count
+    309	    0266  E8 FECE				 call @scal
+    310	    0269  E8 FF53				 call drawing
+    311
+    312	    026C  B8 4C00				 mov ax,4c00h
+    313	    026F  CD 21					 int 21h
+    314					 end MAIN
+Turbo Assembler	 Version 2.02	     26/12/19 13:24:06	    Page 7
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "26/12/19"
+??FILENAME			  Text	 "vl1	  "
+??TIME				  Text	 "13:24:06"
+??VERSION			  Number 0202
+@ALLRIGHT			  Near	 _TEXT:0260
+@CODE				  Text	 _TEXT
+@CODESIZE			  Text	 0
+@CPU				  Text	 0D0FH
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@EQUAL				  Near	 _TEXT:0245
+@ERR1				  Near	 _TEXT:007C
+@FILENAME			  Text	 VL1
+@MODEL				  Text	 2
+@REPEAT				  Near	 _TEXT:0203
+@SCAL				  Near	 _TEXT:0137
+@SMALLER			  Near	 _TEXT:024E
+@WORDSIZE			  Text	 2
+@WRONG				  Near	 _TEXT:0257
+BIGGER1				  Near	 _TEXT:0170
+BUF				  Byte	 DGROUP:0098
+C				  Word	 DGROUP:00AF
+COUNT				  Near	 _TEXT:00DB
+COUNTING			  Near	 _TEXT:00E1
+CYCLE				  Near	 _TEXT:0127
+DRAWING				  Near	 _TEXT:01BF
+ENDDROB				  Near	 _TEXT:00C6
+ENDENTER			  Near	 _TEXT:00CE
+ENDPROC				  Near	 _TEXT:00D9
+ERR1				  Word	 DGROUP:2DF4
+FINDMAXMIN			  Near	 _TEXT:014D
+FLAG				  Byte	 DGROUP:2DF6
+FOUR				  Dword	 DGROUP:28EE
+GO				  Near	 _TEXT:01A4
+HEI				  Dword	 DGROUP:2DFB
+INPUTCONVERT			  Near	 _TEXT:0000
+INVALIDDATA			  Byte	 DGROUP:0077
+KOEF				  Qword	 DGROUP:28D5
+KOEFX				  Qword	 DGROUP:28C5
+KOEFY				  Qword	 DGROUP:28CD
+KOORDY				  Word	 DGROUP:28F4
+L				  Near	 _TEXT:01D2
+L1				  Near	 _TEXT:009A
+LEFTX				  Qword	 DGROUP:0088
+M1				  Near	 _TEXT:002D
+M2				  Near	 _TEXT:0040
+MAIN				  Near	 _TEXT:01FE
+MASX				  Qword	 DGROUP:00B5
+MASY				  Qword	 DGROUP:14B5
+MAXY				  Qword	 DGROUP:28B5
+MESSAGEINL			  Byte	 DGROUP:0000
+MESSAGEINR			  Byte	 DGROUP:0017
+MESSAGELEFTBIGGER		  Byte	 DGROUP:0044
+Turbo Assembler	 Version 2.02	     26/12/19 13:24:06	    Page 8
+Symbol Table
+
+
+
+MESSAGESIDEEQUALS		  Byte	 DGROUP:002E
+MINY				  Qword	 DGROUP:28BD
+ONE				  Dword	 DGROUP:00B1
+PROCDROB			  Near	 _TEXT:0084
+RIGHTX				  Qword	 DGROUP:0090
+SAVEMODE			  Byte	 DGROUP:28E5
+SCALINGX			  Near	 _TEXT:010D
+SMALLER				  Near	 _TEXT:0177
+STEP				  Near	 _TEXT:017E
+TEMP				  Qword	 DGROUP:28DD
+TEMP2				  Word	 DGROUP:28F2
+TEN				  Dword	 DGROUP:00AB
+TWO				  Dword	 DGROUP:28E6
+VVOD				  Near	 _TEXT:0006
+WID				  Dword	 DGROUP:2DF7
+ZERO				  Dword	 DGROUP:28EA
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  STACK				  16  0100 Para	  Stack	  STACK
+  _DATA				  16  2DFF Word	  Public  DATA
+_TEXT				  16  0271 Word	  Public  CODE
+
